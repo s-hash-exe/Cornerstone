@@ -1266,7 +1266,7 @@ function getDefaultFreehandRoiSculptorToolConfiguration() {
     showCursorOnHover: true,
     limitRadiusOutsideRegion: true,
     hoverCursorFadeAlpha: 0.5,
-    hoverCursorFadeDistance: 1.2,
+    hoverCursorFadeDistance: 0.2,
   };
 }
 

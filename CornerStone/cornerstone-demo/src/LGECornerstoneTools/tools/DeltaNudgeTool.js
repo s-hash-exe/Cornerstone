@@ -73,13 +73,13 @@ export default class DeltaNudgeTool extends BaseTool {
         color: this.configuration.dragColor,
         fill: null,
         handleRadius: this._toolSizeCanvas / scale,
-        name: 'FreehandSculptorTool',
+        name: 'DeltaNudgeTool',
       };
       const options2 = {
         color: this.configuration.dragColor,
         fill: null,
         handleRadius: (this._toolSizeCanvas + 20) / scale,
-        name: 'FreehandSculptorTool',
+        name: 'DeltaNudgeTool',
       };
 
       drawHandles(
@@ -244,6 +244,8 @@ export default class DeltaNudgeTool extends BaseTool {
       coords
     );
 
+    // console.log(radiusCanvas);
+
     this.configuration.mouseLocation.handles.start.x = coords.x;
     this.configuration.mouseLocation.handles.start.y = coords.y;
 
@@ -266,13 +268,13 @@ export default class DeltaNudgeTool extends BaseTool {
       fill: null,
       color: this.configuration.hoverColor,
       handleRadius: radiusCanvas / scale,
-      name: 'FreehandSculptorTool',
+      name: 'DeltaNudgeTool',
     };
     const options2 = {
       fill: null,
       color: this.configuration.hoverColor,
       handleRadius: (radiusCanvas + 20) / scale,
-      name: 'FreehandSculptorTool',
+      name: 'DeltaNudgeTool',
     };
     drawHandles(
       context,
@@ -792,15 +794,17 @@ export default class DeltaNudgeTool extends BaseTool {
 
     const toolState = getToolState(element, this.referencedToolName);
     const data = toolState.data[toolIndex];
+    // console.log(data);
 
     const freehandRoiTool = getToolForElement(element, this.referencedToolName);
 
-    let radiusImage = freehandRoiTool.distanceFromPoint(element, data, coords);
+    // let radiusImage = freehandRoiTool.distanceFromPoint(element, data, coords);
     let radiusCanvas = freehandRoiTool.distanceFromPointCanvas(
       element,
       data,
       coords
     );
+    let radiusImage = radiusCanvas + 180;
 
     // Check if should limit maximum size.
     if (config.limitRadiusOutsideRegion) {
@@ -1298,3 +1302,6 @@ function preventPropagation(evt) {
   evt.stopPropagation();
   evt.preventDefault();
 }
+
+// radiusImage - controls radius of contour change
+// radiusConvas - controls radius of the circles
