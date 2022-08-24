@@ -3,6 +3,7 @@ import DoubleTapFitToWindowTool from './DoubleTapFitToWindowTool.js';
 import DragProbeTool from './DragProbeTool.js';
 import EraserTool from './EraserTool.js';
 import FreehandRoiSculptorTool from './FreehandRoiSculptorTool.js';
+import DeltaNudgeTool from './DeltaNudgeTool.js';
 import MagnifyTool from './MagnifyTool.js';
 import OverlayTool from './OverlayTool.js';
 import OrientationMarkersTool from './OrientationMarkersTool.js';
@@ -28,6 +29,7 @@ export {
   DragProbeTool,
   EraserTool,
   FreehandRoiSculptorTool,
+  DeltaNudgeTool,
   MagnifyTool,
   OverlayTool,
   OrientationMarkersTool,
@@ -54,6 +56,7 @@ export default {
   DragProbeTool,
   EraserTool,
   FreehandRoiSculptorTool,
+  DeltaNudgeTool,
   MagnifyTool,
   OverlayTool,
   OrientationMarkersTool,

@@ -8,7 +8,7 @@ import { clipToBox } from '../util/clip.js';
 import getToolForElement from '../store/getToolForElement.js';
 import BaseTool from './base/BaseTool.js';
 import { hideToolCursor, setToolCursor } from '../store/setToolCursor.js';
-import { freehandRoiSculptorCursor } from './cursors/index.js';
+import { deltaNudgeCursor } from './cursors/index.js';
 
 import freehandUtils from '../util/freehand/index.js';
 import { convertToFalseColorImage } from 'cornerstone-core';
@@ -17,22 +17,22 @@ const { FreehandHandleData } = freehandUtils;
 
 /**
  * @public
- * @class FreehandRoiSculptorTool
+ * @class DeltaNudgeTool
  * @memberof Tools
  *
  * @classdesc Tool for easily sculpting annotations drawn with
  * the FreehandRoiTool.
  * @extends Tools.Base.BaseTool
  */
-export default class FreehandRoiSculptorTool extends BaseTool {
+export default class DeltaNudgeTool extends BaseTool {
   constructor(props = {}) {
     const defaultProps = {
-      name: 'FreehandRoiSculptor',
+      name: 'DeltaNudgeTool',
       referencedToolName: 'FreehandRoi',
       supportedInteractionTypes: ['Mouse', 'Touch', 'DoubleTap'],
       mixins: ['activeOrDisabledBinaryTool'],
-      configuration: getDefaultFreehandRoiSculptorToolConfiguration(),
-      svgCursor: freehandRoiSculptorCursor,
+      configuration: getDefaultDeltaNudgeToolConfiguration(),
+      svgCursor: deltaNudgeCursor,
     };
 
     super(props, defaultProps);
@@ -51,7 +51,6 @@ export default class FreehandRoiSculptorTool extends BaseTool {
 
   renderToolData(evt) {
     const eventData = evt.detail;
-
     if (this.configuration.currentTool === null) {
       return false;
     }
@@ -76,12 +75,24 @@ export default class FreehandRoiSculptorTool extends BaseTool {
         handleRadius: this._toolSizeCanvas / scale,
         name: 'FreehandSculptorTool',
       };
+      const options2 = {
+        color: this.configuration.dragColor,
+        fill: null,
+        handleRadius: (this._toolSizeCanvas + 20) / scale,
+        name: 'FreehandSculptorTool',
+      };
 
       drawHandles(
         context,
         eventData,
         this.configuration.mouseLocation.handles,
         options
+      );
+      drawHandles(
+        context,
+        eventData,
+        this.configuration.mouseLocation.handles,
+        options2
       );
     } else if (this.configuration.showCursorOnHover && !this._recentTouchEnd) {
       this._renderHoverCursor(evt);
@@ -257,14 +268,24 @@ export default class FreehandRoiSculptorTool extends BaseTool {
       handleRadius: radiusCanvas / scale,
       name: 'FreehandSculptorTool',
     };
-
+    const options2 = {
+      fill: null,
+      color: this.configuration.hoverColor,
+      handleRadius: (radiusCanvas + 20) / scale,
+      name: 'FreehandSculptorTool',
+    };
     drawHandles(
       context,
       eventData,
       this.configuration.mouseLocation.handles,
       options
     );
-
+    drawHandles(
+      context,
+      eventData,
+      this.configuration.mouseLocation.handles,
+      options2
+    );
     if (this.configuration.limitRadiusOutsideRegion) {
       context.globalAlpha = 1.0; // Reset drawing alpha for other draw calls.
     }
@@ -433,7 +454,7 @@ export default class FreehandRoiSculptorTool extends BaseTool {
 
   /**
    * _pushHandles -Pushes the points radially away from the mouse if they are
-   * contained within the circle defined by the freehandSculpter's toolSize and
+   * contained within the circle defined by the delta nudge's toolSize and
    * the mouse position.
    *
    * @returns {Object}  The first and last pushedHandles.
@@ -504,7 +525,7 @@ export default class FreehandRoiSculptorTool extends BaseTool {
 
   /**
    * Inserts additional handles in sparsely sampled regions of the contour. The
-   * new handles are placed on the circle defined by the the freehandSculpter's
+   * new handles are placed on the circle defined by the the deltaNudge's
    * toolSize and the mouse position.
    * @private
    * @param {Array} pushedHandles
@@ -946,6 +967,7 @@ export default class FreehandRoiSculptorTool extends BaseTool {
    * @returns {Number}              The limited radius in image coordinates.
    */
   _limitCursorRadiusImage(eventData, radiusImage) {
+    // return this._limitCursorRadius(eventData, radiusImage, false);
     return this._limitCursorRadius(eventData, radiusImage, false);
   }
 
@@ -961,6 +983,7 @@ export default class FreehandRoiSculptorTool extends BaseTool {
    * @returns {Number}              The limited radius.
    */
   _limitCursorRadius(eventData, radius, canvasCoords = false) {
+    if (canvasCoords) return 25;
     const element = eventData.element;
     const image = eventData.image;
     const config = this.configuration;
@@ -1103,7 +1126,7 @@ export default class FreehandRoiSculptorTool extends BaseTool {
     const { points, toolSize, mousePoint, image } = this._sculptData;
 
     // Calculate insert position: half way between the handles, then pushed out
-    // Radially to the edge of the freehandSculpter.
+    // Radially to the edge of the Delta Nudge.
     const midPoint = {
       x: (points[previousIndex].x + points[nextIndex].x) / 2.0,
       y: (points[previousIndex].y + points[nextIndex].y) / 2.0,
@@ -1146,7 +1169,7 @@ export default class FreehandRoiSculptorTool extends BaseTool {
   set minSpacing(value) {
     if (typeof value !== 'number') {
       throw new Error(
-        'Attempting to set freehandSculpter minSpacing to a value other than a number.'
+        'Attempting to set DeltaNudge minSpacing to a value other than a number.'
       );
     }
 
@@ -1160,7 +1183,7 @@ export default class FreehandRoiSculptorTool extends BaseTool {
   set maxSpacing(value) {
     if (typeof value !== 'number') {
       throw new Error(
-        'Attempting to set freehandSculpter maxSpacing to a value other than a number.'
+        'Attempting to set DeltaNudge maxSpacing to a value other than a number.'
       );
     }
 
@@ -1174,7 +1197,7 @@ export default class FreehandRoiSculptorTool extends BaseTool {
   set showCursorOnHover(value) {
     if (typeof value !== 'boolean') {
       throw new Error(
-        'Attempting to set freehandSculpter showCursorOnHover to a value other than a boolean.'
+        'Attempting to set deltaNudge showCursorOnHover to a value other than a boolean.'
       );
     }
 
@@ -1189,7 +1212,7 @@ export default class FreehandRoiSculptorTool extends BaseTool {
   set limitRadiusOutsideRegion(value) {
     if (typeof value !== 'boolean') {
       throw new Error(
-        'Attempting to set freehandSculpter limitRadiusOutsideRegion to a value other than a boolean.'
+        'Attempting to set deltaNudge limitRadiusOutsideRegion to a value other than a boolean.'
       );
     }
 
@@ -1204,7 +1227,7 @@ export default class FreehandRoiSculptorTool extends BaseTool {
   set hoverCursorFadeAlpha(value) {
     if (typeof value !== 'number') {
       throw new Error(
-        'Attempting to set freehandSculpter hoverCursorFadeAlpha to a value other than a number.'
+        'Attempting to set deltaNudge hoverCursorFadeAlpha to a value other than a number.'
       );
     }
 
@@ -1222,7 +1245,7 @@ export default class FreehandRoiSculptorTool extends BaseTool {
   set hoverCursorFadeDistance(value) {
     if (typeof value !== 'number') {
       throw new Error(
-        'Attempting to set freehandSculpter hoverCursorFadeDistance to a value other than a number.'
+        'Attempting to set dektaNudge hoverCursorFadeDistance to a value other than a number.'
       );
     }
 
@@ -1235,11 +1258,11 @@ export default class FreehandRoiSculptorTool extends BaseTool {
 }
 
 /**
- * Returns the default freehandRoiSculptorTool configuration.
+ * Returns the default DeltaNudgeToolconfiguration.
  *
  * @returns {Object} The default configuration object.
  */
-function getDefaultFreehandRoiSculptorToolConfiguration() {
+function getDefaultDeltaNudgeToolConfiguration() {
   return {
     mouseLocation: {
       handles: {

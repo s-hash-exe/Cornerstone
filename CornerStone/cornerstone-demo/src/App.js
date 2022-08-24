@@ -1,65 +1,67 @@
-import React from "react";
-import ReactDOM from "react-dom";
-import { jsx, css } from "@emotion/core";
-import * as cornerstone from "cornerstone-core";
-import * as cornerstoneMath from "cornerstone-math";
-import cornerstoneTools from "./LGECornerstoneTools/index.js";
+import React from 'react';
+import ReactDOM from 'react-dom';
+import { jsx, css } from '@emotion/core';
+import * as cornerstone from 'cornerstone-core';
+import * as cornerstoneMath from 'cornerstone-math';
+import cornerstoneTools from './LGECornerstoneTools/index.js';
 // import cornerstoneTools from "cornerstone-tools";
-import cornerstoneWebImageLoader from "cornerstone-web-image-loader";
-import Hammer from "hammerjs";
-
+import cornerstoneWebImageLoader from 'cornerstone-web-image-loader';
+import Hammer from 'hammerjs';
 
 // import CornerstoneViewport from "./LGECornerStoneReactComp/index";
 
 import {
   ViewerLayout,
   VIEWER_LAYOUT_OPTIONS,
-  getViewCountFromLayout
-} from "./ViewerLayout";
-import { Viewer } from "./Viewer";
-
-
+  getViewCountFromLayout,
+} from './ViewerLayout';
+import { Viewer } from './Viewer';
 
 // Display an image
 const imageId =
-  "https://www.asteris.biz/Keystone/ImageDownload.aspx?ClinicCode=TESTKEYSTONE&ImageId=01b1755e-33d1-4b24-b9af-a4a019689d5f&ImageType=PreviewImage&FrameIndex=0";
+  'https://www.asteris.biz/Keystone/ImageDownload.aspx?ClinicCode=TESTKEYSTONE&ImageId=01b1755e-33d1-4b24-b9af-a4a019689d5f&ImageType=PreviewImage&FrameIndex=0';
 
 const tools = [
   {
-    name: "Length",
+    name: 'Length',
     func: cornerstoneTools.LengthTool,
-    options: { mouseButtonMask: 1 }
+    options: { mouseButtonMask: 1 },
   },
   {
-    name: "Probe",
+    name: 'Probe',
     func: cornerstoneTools.ProbeTool,
-    options: { mouseButtonMask: 1 }
+    options: { mouseButtonMask: 1 },
   },
   {
-    name: "FreehandRoi",
+    name: 'FreehandRoi',
     func: cornerstoneTools.FreehandRoiTool,
-    options: { mouseButtonMask: 1 }
+    options: { mouseButtonMask: 1 },
   },
   {
-    name: "Eraser",
+    name: 'Eraser',
     func: cornerstoneTools.EraserTool,
-    options: { mouseButtonMask: 1 }
+    options: { mouseButtonMask: 1 },
   },
   {
-    name: "Zoom",
+    name: 'Zoom',
     func: cornerstoneTools.ZoomTool,
-    options: { mouseButtonMask: 1 }
+    options: { mouseButtonMask: 1 },
   },
   {
-    name: "Pan",
+    name: 'Pan',
     func: cornerstoneTools.PanTool,
-    options: { mouseButtonMask: 1 }
+    options: { mouseButtonMask: 1 },
   },
   {
-    name: "FreehandRoiSculptor",
+    name: 'FreehandRoiSculptor',
     func: cornerstoneTools.FreehandRoiSculptorTool,
-    options: { mouseButtonMask: 1 }
-  }
+    options: { mouseButtonMask: 1 },
+  },
+  {
+    name: 'DeltaNudgeTool',
+    func: cornerstoneTools.DeltaNudgeTool,
+    options: { mouseButtonMask: 1 },
+  },
 ];
 
 function initCornerstone(element) {
@@ -71,26 +73,25 @@ function initCornerstone(element) {
     cornerstoneTools.external.Hammer = Hammer;
 
     cornerstone.registerImageLoader(
-      "http",
+      'http',
       cornerstoneWebImageLoader.loadImage
     );
     cornerstone.registerImageLoader(
-      "https",
+      'https',
       cornerstoneWebImageLoader.loadImage
     );
 
     cornerstoneTools.init({ globalToolSyncEnabled: true });
   } catch (err) {
-    console.log("initCornerstone error", err);
+    console.log('initCornerstone error', err);
     console.log(err.stack);
   } finally {
-    console.log("we seem to be done here");
+    console.log('we seem to be done here');
   }
 }
 
 export default class App extends React.Component {
-  state = { activeTool: null, viewerLayout: "2x2" };
-
+  state = { activeTool: null, viewerLayout: '2x2' };
 
   componentDidMount() {
     console.log(cornerstoneTools.FreehandRoiTool);
@@ -105,15 +106,15 @@ export default class App extends React.Component {
   }
 
   componentWillUnmount() {
-    console.log("unmounting");
+    console.log('unmounting');
     tools.forEach(({ func }) => {
       cornerstoneTools.removeTool(func);
     });
   }
 
-  setTool = toolName => {
+  setTool = (toolName) => {
     this.setState({
-      activeTool: toolName
+      activeTool: toolName,
     });
     const conf = tools.find(({ name }) => name === toolName);
     if (!conf) throw new Error(`Tool ${toolName} is not defined`);
@@ -121,10 +122,10 @@ export default class App extends React.Component {
     cornerstoneTools.setToolActive(toolName, conf.options);
   };
 
-  setViewerLayout = event => {
+  setViewerLayout = (event) => {
     const viewerLayout = event.target.value;
     this.setState({
-      viewerLayout
+      viewerLayout,
     });
   };
 
@@ -142,14 +143,14 @@ export default class App extends React.Component {
         <Header />
         <DemoCell>
           <div>
-            {tools.map(tool => (
+            {tools.map((tool) => (
               <button key={tool.name} onClick={() => this.setTool(tool.name)}>
                 {tool.name}
               </button>
             ))}
             <span> - - </span>
             <select value={viewerLayout} onChange={this.setViewerLayout}>
-              {VIEWER_LAYOUT_OPTIONS.map(opt => (
+              {VIEWER_LAYOUT_OPTIONS.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
                 </option>
@@ -174,33 +175,33 @@ export default class App extends React.Component {
   }
 }
 
-const DemoContainer = props => (
+const DemoContainer = (props) => (
   <div
     css={{
-      display: "flex",
-      position: "fixed",
+      display: 'flex',
+      position: 'fixed',
       top: 0,
       left: 0,
       right: 0,
       bottom: 0,
-      flexDirection: "column",
-      justifyContent: "stretch",
-      alignItems: "stretch",
-      overflow: "hidden"
+      flexDirection: 'column',
+      justifyContent: 'stretch',
+      alignItems: 'stretch',
+      overflow: 'hidden',
     }}
     {...props}
   />
 );
 
-const DemoCell = props => (
+const DemoCell = (props) => (
   <div
     style={{
-      display: "flex",
-      flexDirection: "column",
-      justifyContent: "center",
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
       flexShrink: 0,
       height: 30,
-      padding: 6
+      padding: 6,
     }}
     {...props}
   />
