@@ -76,7 +76,7 @@ export default class FreehandRoiSculptorTool extends BaseTool {
         handleRadius: this._toolSizeCanvas / scale,
         name: 'FreehandSculptorTool',
       };
-
+      console.log('Options Drag = ' + this._toolSizeCanvas);
       drawHandles(
         context,
         eventData,
@@ -264,7 +264,7 @@ export default class FreehandRoiSculptorTool extends BaseTool {
       this.configuration.mouseLocation.handles,
       options
     );
-
+    console.log('Options Hover = ' + radiusCanvas);
     if (this.configuration.limitRadiusOutsideRegion) {
       context.globalAlpha = 1.0; // Reset drawing alpha for other draw calls.
     }
@@ -780,6 +780,8 @@ export default class FreehandRoiSculptorTool extends BaseTool {
       data,
       coords
     );
+    console.log('Radius Image = ' + radiusImage);
+    console.log('Radius Canvas = ' + radiusCanvas);
 
     // Check if should limit maximum size.
     if (config.limitRadiusOutsideRegion) {

@@ -46,7 +46,7 @@ export default class ZoomTool extends BaseTool {
   }
 }
 
-const dragCallback = function(evt) {
+const dragCallback = function (evt) {
   const deltaY = evt.detail.deltaPoints.page.y;
 
   if (!deltaY) {
@@ -83,12 +83,14 @@ function defaultStrategy(evt) {
     minScale,
   });
 
+  // console.log(updatedViewport);
+
   external.cornerstone.setViewport(element, updatedViewport);
 
   // Now that the scale has been updated, determine the offset we need to apply to the center so we can
   // Keep the original start location in the same position
   const newCoords = external.cornerstone.pageToPixel(element, startX, startY);
-
+  // console.log(newCoords);
   // The shift we will use is the difference between the original image coordinates of the point we've selected
   // And the image coordinates of the same point on the page after the viewport scaling above has been performed
   // This shift is in image coordinates, and is designed to keep the target location fixed on the page.
@@ -106,12 +108,8 @@ function defaultStrategy(evt) {
 }
 
 function translateStrategy(evt) {
-  const {
-    invert,
-    preventZoomOutsideImage,
-    maxScale,
-    minScale,
-  } = this.configuration;
+  const { invert, preventZoomOutsideImage, maxScale, minScale } =
+    this.configuration;
   const deltaY = evt.detail.deltaPoints.page.y;
   const ticks = invert ? -deltaY / 100 : deltaY / 100;
   const image = evt.detail.image;

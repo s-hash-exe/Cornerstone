@@ -14,7 +14,7 @@ import freehandUtils from '../util/freehand/index.js';
 import { convertToFalseColorImage } from 'cornerstone-core';
 
 const { FreehandHandleData } = freehandUtils;
-
+var testElement;
 /**
  * @public
  * @class DeltaNudgeTool
@@ -69,16 +69,17 @@ export default class DeltaNudgeTool extends BaseTool {
       const context = eventData.canvasContext.canvas.getContext('2d');
       var scale =
         external.cornerstone.getEnabledElement(element).viewport.scale;
+
       const options = {
         color: this.configuration.dragColor,
         fill: null,
-        handleRadius: this._toolSizeCanvas / scale,
+        handleRadius: 32 / scale,
         name: 'DeltaNudgeTool',
       };
       const options2 = {
         color: this.configuration.dragColor,
         fill: null,
-        handleRadius: (this._toolSizeCanvas + 20) / scale,
+        handleRadius: 52 / scale,
         name: 'DeltaNudgeTool',
       };
 
@@ -88,6 +89,7 @@ export default class DeltaNudgeTool extends BaseTool {
         this.configuration.mouseLocation.handles,
         options
       );
+
       drawHandles(
         context,
         eventData,
@@ -192,6 +194,7 @@ export default class DeltaNudgeTool extends BaseTool {
   _activeEnd(evt) {
     const eventData = evt.detail;
     const element = eventData.element;
+    // console.log(element);
     const config = this.configuration;
 
     this._active = false;
@@ -238,13 +241,9 @@ export default class DeltaNudgeTool extends BaseTool {
     }
 
     const freehandRoiTool = getToolForElement(element, this.referencedToolName);
-    let radiusCanvas = freehandRoiTool.distanceFromPointCanvas(
-      element,
-      data,
-      coords
-    );
+    let radiusCanvas = freehandRoiTool.distanceFromPoint(element, data, coords);
 
-    // console.log(radiusCanvas);
+    const canvasCoords = external.cornerstone.pixelToCanvas(element, coords);
 
     this.configuration.mouseLocation.handles.start.x = coords.x;
     this.configuration.mouseLocation.handles.start.y = coords.y;
@@ -264,16 +263,17 @@ export default class DeltaNudgeTool extends BaseTool {
     }
 
     var scale = external.cornerstone.getEnabledElement(element).viewport.scale;
+
     const options = {
       fill: null,
       color: this.configuration.hoverColor,
-      handleRadius: radiusCanvas / scale,
+      handleRadius: 32 / scale,
       name: 'DeltaNudgeTool',
     };
     const options2 = {
       fill: null,
       color: this.configuration.hoverColor,
-      handleRadius: (radiusCanvas + 20) / scale,
+      handleRadius: 52 / scale,
       name: 'DeltaNudgeTool',
     };
     drawHandles(
@@ -419,6 +419,7 @@ export default class DeltaNudgeTool extends BaseTool {
     external.cornerstone.updateImage(eventData.element);
   }
 
+  //Uses the radiusImage (toolSize) variable to handle the push
   /**
    * Sculpts the freehand ROI with the circular freehandSculpter tool, moving,
    * adding and removing handles as necessary.
@@ -462,16 +463,36 @@ export default class DeltaNudgeTool extends BaseTool {
    * @returns {Object}  The first and last pushedHandles.
    */
   _pushHandles() {
-    const { points, mousePoint, toolSize } = this._sculptData;
+    const { points, mousePoint, toolSize, element } = this._sculptData;
     const pushedHandles = {};
-
+    // console.log(element);
     for (let i = 0; i < points.length; i++) {
-      const distanceToHandle = external.cornerstoneMath.point.distance(
-        points[i],
+      //To be Handled - Check if canvas distance remains constant unlike pixel distance
+      // const canvasCoords = external.cornerstone.pixelToCanvas(element, coords);
+
+      // const distanceI = external.cornerstoneMath.point.distance(
+      //   handleCanvas,
+      //   canvasCoords
+      // );
+      const pointsCanvas = external.cornerstone.pixelToCanvas(
+        element,
+        points[i]
+      );
+      const mousePointCanvas = external.cornerstone.pixelToCanvas(
+        element,
         mousePoint
       );
+      // console.log(mousePointCanvas);
+      // const distanceToHandle = external.cornerstoneMath.point.distance(
+      //   points[i],
+      //   mousePoint
+      // );
+      const distanceToHandle = external.cornerstoneMath.point.distance(
+        pointsCanvas,
+        mousePointCanvas
+      );
 
-      if (distanceToHandle > toolSize) {
+      if (distanceToHandle > 52) {
         continue;
       }
 
@@ -786,6 +807,7 @@ export default class DeltaNudgeTool extends BaseTool {
    * @param {Object} eventData - Data object associated with the event.
    * @returns {void}
    */
+
   _configureToolSize(eventData) {
     const element = eventData.element;
     const config = this.configuration;
@@ -794,21 +816,28 @@ export default class DeltaNudgeTool extends BaseTool {
 
     const toolState = getToolState(element, this.referencedToolName);
     const data = toolState.data[toolIndex];
-    // console.log(data);
 
     const freehandRoiTool = getToolForElement(element, this.referencedToolName);
 
-    // let radiusImage = freehandRoiTool.distanceFromPoint(element, data, coords);
     let radiusCanvas = freehandRoiTool.distanceFromPointCanvas(
       element,
       data,
       coords
     );
-    let radiusImage = radiusCanvas + 180;
 
+    let radiusImage = 271;
+
+    var {
+      distance,
+      point: { x, y },
+    } = freehandRoiTool.distanceAndPointOnContour(element, data, coords);
+    console.log('Distance = ' + distance);
+    console.log('Point = ' + x + ' , ' + y);
+
+    var scale = external.cornerstone.getEnabledElement(element).viewport.scale;
     // Check if should limit maximum size.
     if (config.limitRadiusOutsideRegion) {
-      radiusImage = this._limitCursorRadiusImage(eventData, radiusImage);
+      // radiusImage = this._limitCursorRadiusImage(eventData, radiusImage);
       radiusCanvas = this._limitCursorRadiusCanvas(eventData, radiusCanvas);
     }
 
@@ -970,10 +999,10 @@ export default class DeltaNudgeTool extends BaseTool {
    *                                in image coordinates.
    * @returns {Number}              The limited radius in image coordinates.
    */
-  _limitCursorRadiusImage(eventData, radiusImage) {
-    // return this._limitCursorRadius(eventData, radiusImage, false);
-    return this._limitCursorRadius(eventData, radiusImage, false);
-  }
+  // _limitCursorRadiusImage(eventData, radiusImage) {
+  //   // return this._limitCursorRadius(eventData, radiusImage, false);
+  //   return this._limitCursorRadius(eventData, radiusImage, false);
+  // }
 
   /**
    * Limits the cursor radius so that it its maximum area is the same as the
@@ -987,7 +1016,8 @@ export default class DeltaNudgeTool extends BaseTool {
    * @returns {Number}              The limited radius.
    */
   _limitCursorRadius(eventData, radius, canvasCoords = false) {
-    if (canvasCoords) return 25;
+    // return radius;
+    // if (canvasCoords) return 25;
     const element = eventData.element;
     const image = eventData.image;
     const config = this.configuration;
@@ -1014,7 +1044,7 @@ export default class DeltaNudgeTool extends BaseTool {
 
     const area = data.area * areaModifier;
     const maxRadius = Math.pow(area / Math.PI, 0.5);
-
+    // console.log(radius + ' ------ ' + maxRadius);
     return Math.min(radius, maxRadius);
   }
 

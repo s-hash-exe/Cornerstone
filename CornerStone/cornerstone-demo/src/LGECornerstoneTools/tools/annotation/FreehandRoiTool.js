@@ -70,19 +70,16 @@ export default class FreehandRoiTool extends BaseAnnotationTool {
     this._drawingMouseMoveCallback = this._drawingMouseMoveCallback.bind(this);
     this._drawingMouseDragCallback = this._drawingMouseDragCallback.bind(this);
     this._drawingMouseUpCallback = this._drawingMouseUpCallback.bind(this);
-    this._drawingMouseDoubleClickCallback = this._drawingMouseDoubleClickCallback.bind(
-      this
-    );
+    this._drawingMouseDoubleClickCallback =
+      this._drawingMouseDoubleClickCallback.bind(this);
     this._editMouseUpCallback = this._editMouseUpCallback.bind(this);
     this._editMouseDragCallback = this._editMouseDragCallback.bind(this);
 
-    this._drawingTouchStartCallback = this._drawingTouchStartCallback.bind(
-      this
-    );
+    this._drawingTouchStartCallback =
+      this._drawingTouchStartCallback.bind(this);
     this._drawingTouchDragCallback = this._drawingTouchDragCallback.bind(this);
-    this._drawingDoubleTapClickCallback = this._drawingDoubleTapClickCallback.bind(
-      this
-    );
+    this._drawingDoubleTapClickCallback =
+      this._drawingDoubleTapClickCallback.bind(this);
     this._editTouchDragCallback = this._editTouchDragCallback.bind(this);
 
     this.throttledUpdateCachedStats = throttle(this.updateCachedStats, 110);
@@ -178,6 +175,31 @@ export default class FreehandRoiTool extends BaseAnnotationTool {
     }
 
     return distance;
+  }
+
+  // Newly added to return nearest point too
+  // This function find the point on contour nearest to the mouse cursor center point
+  // Returns - The shortest distance and point
+  distanceAndPointOnContour(element, data, coords) {
+    let distance = Infinity;
+    let point = {};
+    for (let i = 0; i < data.handles.points.length; i++) {
+      const distanceI = external.cornerstoneMath.point.distance(
+        data.handles.points[i],
+        coords
+      );
+      if (distanceI < distance) {
+        distance = distanceI;
+        point = data.handles.points[i];
+      }
+    }
+
+    // If an error caused distance not to be calculated, return -1.
+    if (distance === Infinity) {
+      return -1;
+    }
+
+    return { distance, point };
   }
 
   /**
@@ -371,7 +393,7 @@ export default class FreehandRoiTool extends BaseAnnotationTool {
         continue;
       }
 
-      draw(context, context => {
+      draw(context, (context) => {
         let color = toolColors.getColorIfActive(data);
         let fillColor;
 
@@ -1137,7 +1159,7 @@ export default class FreehandRoiTool extends BaseAnnotationTool {
     const { element } = eventData;
     const mousePoint = config.mouseLocation.handles.start;
 
-    const handleFurtherThanMinimumSpacing = handle =>
+    const handleFurtherThanMinimumSpacing = (handle) =>
       this._isDistanceLargerThanSpacing(element, handle, mousePoint);
 
     if (points.every(handleFurtherThanMinimumSpacing)) {
@@ -1318,11 +1340,12 @@ export default class FreehandRoiTool extends BaseAnnotationTool {
 
     data.canComplete = false;
 
-    const mouseAtOriginHandle = this._isDistanceSmallerThanCompleteSpacingCanvas(
-      element,
-      points[0],
-      mousePoint
-    );
+    const mouseAtOriginHandle =
+      this._isDistanceSmallerThanCompleteSpacingCanvas(
+        element,
+        points[0],
+        mousePoint
+      );
 
     if (
       mouseAtOriginHandle &&
@@ -1376,11 +1399,12 @@ export default class FreehandRoiTool extends BaseAnnotationTool {
     const mousePoint = config.mouseLocation.handles.start;
     const points = data.handles.points;
 
-    const mouseAtOriginHandle = this._isDistanceSmallerThanCompleteSpacingCanvas(
-      element,
-      points[0],
-      mousePoint
-    );
+    const mouseAtOriginHandle =
+      this._isDistanceSmallerThanCompleteSpacingCanvas(
+        element,
+        points[0],
+        mousePoint
+      );
 
     if (mouseAtOriginHandle) {
       data.canComplete = true;
