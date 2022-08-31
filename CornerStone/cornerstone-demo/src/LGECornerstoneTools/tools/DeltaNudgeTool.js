@@ -14,7 +14,8 @@ import freehandUtils from '../util/freehand/index.js';
 import { convertToFalseColorImage } from 'cornerstone-core';
 
 const { FreehandHandleData } = freehandUtils;
-var testElement;
+var testElement = -1;
+var prevScale = -1;
 /**
  * @public
  * @class DeltaNudgeTool
@@ -194,7 +195,7 @@ export default class DeltaNudgeTool extends BaseTool {
   _activeEnd(evt) {
     const eventData = evt.detail;
     const element = eventData.element;
-    // console.log(element);
+
     const config = this.configuration;
 
     this._active = false;
@@ -465,39 +466,52 @@ export default class DeltaNudgeTool extends BaseTool {
   _pushHandles() {
     const { points, mousePoint, toolSize, element } = this._sculptData;
     const pushedHandles = {};
-    // console.log(element);
-    for (let i = 0; i < points.length; i++) {
-      //To be Handled - Check if canvas distance remains constant unlike pixel distance
-      // const canvasCoords = external.cornerstone.pixelToCanvas(element, coords);
 
-      // const distanceI = external.cornerstoneMath.point.distance(
-      //   handleCanvas,
-      //   canvasCoords
-      // );
+    for (let i = 0; i < points.length; i++) {
+      // converts point on contour from pixel coords to canvas coords
       const pointsCanvas = external.cornerstone.pixelToCanvas(
         element,
         points[i]
       );
+
+      //converts mouse pointer from pixel coords to canvas coords
       const mousePointCanvas = external.cornerstone.pixelToCanvas(
         element,
         mousePoint
       );
-      // console.log(mousePointCanvas);
-      // const distanceToHandle = external.cornerstoneMath.point.distance(
-      //   points[i],
-      //   mousePoint
-      // );
-      const distanceToHandle = external.cornerstoneMath.point.distance(
+      console.log('Mouse Point ', mousePointCanvas);
+      //distance in canvas units
+      const distanceToHandleCanvas = external.cornerstoneMath.point.distance(
         pointsCanvas,
         mousePointCanvas
       );
 
-      if (distanceToHandle > 52) {
+      //distance in pixel units
+      const distanceToHandle = external.cornerstoneMath.point.distance(
+        points[i],
+        mousePoint
+      );
+      // console.log('Outside ', mousePoint);
+      // 52 represents the radius of outer circle in canvas units
+      if (distanceToHandleCanvas > 52) {
         continue;
       }
+      // console.log('Inside ', mousePoint);
+      var currScale =
+        external.cornerstone.getEnabledElement(element).viewport.scale;
 
-      // Push point if inside circle, to edge of circle.
-      this._pushOneHandle(i, distanceToHandle);
+      /*
+        currScale = Stores the current viewport scale 
+        prevScale = Stores the previous viewport scale
+        testElement = Resultant - has corrent value of shift 
+      */
+
+      if (currScale !== prevScale) {
+        prevScale = currScale;
+        testElement = distanceToHandle;
+      }
+
+      this._pushOneHandle(i, distanceToHandle, testElement);
       if (pushedHandles.first === undefined) {
         pushedHandles.first = i;
         pushedHandles.last = i;
@@ -517,18 +531,23 @@ export default class DeltaNudgeTool extends BaseTool {
    * @param {number} distanceToHandle - The distance between the mouse cursor and the handle.
    * @returns {void}
    */
-  _pushOneHandle(i, distanceToHandle) {
+  _pushOneHandle(i, distanceToHandle, testData) {
     const { points, mousePoint, toolSize, image } = this._sculptData;
     const handle = points[i];
+
+    // Made Static for outer circle as radius is 271 pixel units
+    // toolSize = 52
 
     const directionUnitVector = {
       x: (handle.x - mousePoint.x) / distanceToHandle,
       y: (handle.y - mousePoint.y) / distanceToHandle,
     };
 
+    let tx = mousePoint.x + Math.ceil(testData) * directionUnitVector.x;
+    let ty = mousePoint.y + Math.ceil(testData) * directionUnitVector.y;
     const position = {
-      x: mousePoint.x + toolSize * directionUnitVector.x,
-      y: mousePoint.y + toolSize * directionUnitVector.y,
+      x: tx,
+      y: ty,
     };
 
     clipToBox(position, image);
@@ -831,8 +850,6 @@ export default class DeltaNudgeTool extends BaseTool {
       distance,
       point: { x, y },
     } = freehandRoiTool.distanceAndPointOnContour(element, data, coords);
-    console.log('Distance = ' + distance);
-    console.log('Point = ' + x + ' , ' + y);
 
     var scale = external.cornerstone.getEnabledElement(element).viewport.scale;
     // Check if should limit maximum size.
@@ -1044,7 +1061,7 @@ export default class DeltaNudgeTool extends BaseTool {
 
     const area = data.area * areaModifier;
     const maxRadius = Math.pow(area / Math.PI, 0.5);
-    // console.log(radius + ' ------ ' + maxRadius);
+
     return Math.min(radius, maxRadius);
   }
 
@@ -1157,10 +1174,8 @@ export default class DeltaNudgeTool extends BaseTool {
    * @returns {Object} The position the handle should be inserted.
    */
   _getInsertPosition(insertIndex, previousIndex, nextIndex) {
-    const { points, toolSize, mousePoint, image } = this._sculptData;
+    const { points, toolSize, mousePoint, image, element } = this._sculptData;
 
-    // Calculate insert position: half way between the handles, then pushed out
-    // Radially to the edge of the Delta Nudge.
     const midPoint = {
       x: (points[previousIndex].x + points[nextIndex].x) / 2.0,
       y: (points[previousIndex].y + points[nextIndex].y) / 2.0,
@@ -1171,17 +1186,31 @@ export default class DeltaNudgeTool extends BaseTool {
       midPoint
     );
 
+    const mousePointCanvas = external.cornerstone.pixelToCanvas(
+      element,
+      mousePoint
+    );
+
+    const midPointCanvas = external.cornerstone.pixelToCanvas(
+      element,
+      midPoint
+    );
+
+    const distanceToMidPointCanvas = external.cornerstoneMath.point.distance(
+      mousePointCanvas,
+      midPointCanvas
+    );
+
     let insertPosition;
 
-    if (distanceToMidPoint < toolSize) {
+    if (distanceToMidPointCanvas < 52) {
       const directionUnitVector = {
         x: (midPoint.x - mousePoint.x) / distanceToMidPoint,
         y: (midPoint.y - mousePoint.y) / distanceToMidPoint,
       };
-
       insertPosition = {
-        x: mousePoint.x + toolSize * directionUnitVector.x,
-        y: mousePoint.y + toolSize * directionUnitVector.y,
+        x: mousePoint.x + 271 * directionUnitVector.x,
+        y: mousePoint.y + 271 * directionUnitVector.y,
       };
     } else {
       insertPosition = midPoint;

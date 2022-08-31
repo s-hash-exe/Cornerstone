@@ -76,7 +76,7 @@ export default class FreehandRoiSculptorTool extends BaseTool {
         handleRadius: this._toolSizeCanvas / scale,
         name: 'FreehandSculptorTool',
       };
-      console.log('Options Drag = ' + this._toolSizeCanvas);
+      // console.log('Options Drag = ' + this._toolSizeCanvas);
       drawHandles(
         context,
         eventData,
@@ -264,7 +264,7 @@ export default class FreehandRoiSculptorTool extends BaseTool {
       this.configuration.mouseLocation.handles,
       options
     );
-    console.log('Options Hover = ' + radiusCanvas);
+    // console.log('Options Hover = ' + radiusCanvas);
     if (this.configuration.limitRadiusOutsideRegion) {
       context.globalAlpha = 1.0; // Reset drawing alpha for other draw calls.
     }
@@ -461,7 +461,7 @@ export default class FreehandRoiSculptorTool extends BaseTool {
         pushedHandles.last = i;
       }
     }
-
+    console.log(pushedHandles);
     return pushedHandles;
   }
 
@@ -474,6 +474,9 @@ export default class FreehandRoiSculptorTool extends BaseTool {
    * @returns {void}
    */
   _pushOneHandle(i, distanceToHandle) {
+    // console.log(
+    //   'From Freehand Sculpture for point ' + i + ' = ' + distanceToHandle
+    // );
     const { points, mousePoint, toolSize, image } = this._sculptData;
     const handle = points[i];
 
@@ -486,7 +489,7 @@ export default class FreehandRoiSculptorTool extends BaseTool {
       x: mousePoint.x + toolSize * directionUnitVector.x,
       y: mousePoint.y + toolSize * directionUnitVector.y,
     };
-
+    // console.log('Position = ', position);
     clipToBox(position, image);
 
     handle.x = position.x;
