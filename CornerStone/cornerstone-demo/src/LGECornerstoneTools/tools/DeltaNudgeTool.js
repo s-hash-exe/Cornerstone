@@ -479,7 +479,6 @@ export default class DeltaNudgeTool extends BaseTool {
         element,
         mousePoint
       );
-      console.log('Mouse Point ', mousePointCanvas);
       //distance in canvas units
       const distanceToHandleCanvas = external.cornerstoneMath.point.distance(
         pointsCanvas,
@@ -496,6 +495,7 @@ export default class DeltaNudgeTool extends BaseTool {
       if (distanceToHandleCanvas > 52) {
         continue;
       }
+      console.log(distanceToHandleCanvas);
       // console.log('Inside ', mousePoint);
       var currScale =
         external.cornerstone.getEnabledElement(element).viewport.scale;
@@ -535,22 +535,25 @@ export default class DeltaNudgeTool extends BaseTool {
     const { points, mousePoint, toolSize, image } = this._sculptData;
     const handle = points[i];
 
-    // Made Static for outer circle as radius is 271 pixel units
-    // toolSize = 52
+    // const directionUnitVector = {
+    //   x: (handle.x - mousePoint.x) / distanceToHandle,
+    //   y: (handle.y - mousePoint.y) / distanceToHandle,
+    // };
+    // let tx = mousePoint.x + Math.ceil(testData) * directionUnitVector.x;
+    // let ty = mousePoint.y + Math.ceil(testData) * directionUnitVector.y;
 
-    const directionUnitVector = {
-      x: (handle.x - mousePoint.x) / distanceToHandle,
-      y: (handle.y - mousePoint.y) / distanceToHandle,
-    };
+    // console.log(angle);
+    // console.log('X ' + handle.x + ' --> ' + tx);
+    // console.log('Y ' + handle.y + ' --> ' + ty);
 
-    let tx = mousePoint.x + Math.ceil(testData) * directionUnitVector.x;
-    let ty = mousePoint.y + Math.ceil(testData) * directionUnitVector.y;
+    let tx = (2 / testData) * (handle.x - mousePoint.x) + handle.x;
+    let ty = (2 / testData) * (handle.y - mousePoint.y) + handle.y;
     const position = {
       x: tx,
       y: ty,
     };
 
-    clipToBox(position, image);
+    // clipToBox(position, image);
 
     handle.x = position.x;
     handle.y = position.y;
