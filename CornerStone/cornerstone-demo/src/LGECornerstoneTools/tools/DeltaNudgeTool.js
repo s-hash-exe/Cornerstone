@@ -14,8 +14,11 @@ import freehandUtils from '../util/freehand/index.js';
 import { convertToFalseColorImage } from 'cornerstone-core';
 
 const { FreehandHandleData } = freehandUtils;
-var testElement = -1;
-var prevScale = -1;
+var DILATE = 1,
+  ERODE = -1,
+  testElement = -1,
+  prevScale = -1;
+
 /**
  * @public
  * @class DeltaNudgeTool
@@ -37,7 +40,18 @@ export default class DeltaNudgeTool extends BaseTool {
     };
 
     super(props, defaultProps);
-
+    this.pSize = 1;
+    this.min_radius = 10;
+    this.radius = 52;
+    this.max_edit = 1;
+    this.oldCtr = 0;
+    this.ctr = [];
+    this.bPtsEdited = [];
+    this.opType = 0;
+    this.ARC_SIZE = 5;
+    this.pixelSize = 1;
+    this.direction = [];
+    this.INNER_RAD = 0.5;
     this.updateOnMouseMove = true;
     this.isMultiPartTool = true;
     this.referencedToolName = this.initialConfiguration.referencedToolName;
@@ -448,12 +462,401 @@ export default class DeltaNudgeTool extends BaseTool {
     // Insert new handles in sparsely populated areas of the
     // Pushed part of the contour.
 
-    if (pushedHandles.first !== undefined) {
-      this._insertNewHandles(pushedHandles);
-      // If any handles have been pushed very close together or even overlap,
-      // Combine these into a single handle.
-      this._consolidateHandles();
+    // if (pushedHandles.first !== undefined) {
+    //   this._insertNewHandles(pushedHandles);
+    //   // If any handles have been pushed very close together or even overlap,
+    //   // Combine these into a single handle.
+    //   this._consolidateHandles();
+    // }
+  }
+
+  /**
+   * _findCircle - To compute the equation of the circle for given points(p1 (x1,y1), p2 (x2,y2), p3 (x3,y3))
+   *  Input:  Three points (float)
+   * Output: 1. Array containing the co-ordinates of centre of the circle (float)
+             2. Radius of the circle (float)
+   */
+
+  _findCircle(p1, p2, p3) {
+    var x1 = p1.x,
+      y1 = p1.y,
+      x2 = p2.x,
+      y2 = p2.y,
+      x3 = p3.x,
+      y3 = p3.y;
+
+    var t1 = Math.abs(x1 - x2) <= 2 && Math.abs(y1 - y2) <= 2;
+    var t2 = Math.abs(x1 - x3) <= 2 && Math.abs(y1 - y3) <= 2;
+    var t3 = Math.abs(x3 - x2) <= 2 && Math.abs(y3 - y2) <= 2;
+    if (t1 || t2 || t3) {
+      var ret = [x2, y2, 0];
+      return ret;
     }
+
+    var x12 = x1 - x2;
+    var x13 = x1 - x3;
+
+    var y12 = y1 - y2;
+    var y13 = y1 - y3;
+
+    var y31 = y3 - y1;
+    var y21 = y2 - y1;
+
+    var x31 = x3 - x1;
+    var x21 = x2 - x1;
+
+    // x1^2 - x3^2
+    var sx13 = Math.pow(x1, 2) - Math.pow(x3, 2);
+
+    // y1^2 - y3^2
+    var sy13 = Math.pow(y1, 2) - Math.pow(y3, 2);
+
+    // x2^2 - x1^2
+    var sx21 = Math.pow(x2, 2) - Math.pow(x1, 2);
+
+    // y2^2 - y1^2
+    var sy21 = Math.pow(y2, 2) - Math.pow(y1, 2);
+
+    var f =
+      (sx13 * x12 + sy13 * x12 + sx21 * x13 + sy21 * x13) /
+      (2 * (y31 * x12 - y21 * x13));
+
+    var g =
+      (sx13 * y12 + sy13 * y12 + sx21 * y13 + sy21 * y13) /
+      (2 * (x31 * y12 - x21 * y13));
+
+    var c = -Math.pow(x1, 2) - Math.pow(y1, 2) - 2 * g * x1 - 2 * f * y1;
+
+    // eqn of circle be x^2 + y^2 + 2*g*x + 2*f*y + c = 0
+    // where centre is (h = -g, k = -f) and
+    // radius r as r^2 = h^2 + k^2 - c
+    var h = -g;
+    var k = -f;
+    var sqr_of_r = h * h + k * k - c;
+
+    // r is the radius
+    var r = Math.round(Math.sqrt(sqr_of_r), 5);
+    return [h, k, r];
+  }
+
+  /**
+   * _distance - Calculating the distance between point p1 and p2
+   *  Input:  Two points (float)
+   * Output:  Distance (float)
+   */
+
+  _distance(p1, p2) {
+    const { element } = this._sculptData;
+    const p1Canvas = external.cornerstone.pixelToCanvas(element, p1);
+    const p2Canvas = external.cornerstone.pixelToCanvas(element, p2);
+
+    //distance in canvas units
+    const distanceToHandleCanvas = external.cornerstoneMath.point.distance(
+      p1Canvas,
+      p2Canvas
+    );
+    var normalDistance = Math.sqrt(
+      Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)
+    );
+    return distanceToHandleCanvas;
+  }
+
+  /**
+   * _getPoint - To get the point co-ordinates
+   *  Input: 1. dir -  direction of point in contour
+             2. len - The total length of the curve
+             3. cen - centre of the contour
+   * Output:  Point co-ordinates(float)
+   */
+
+  _getPoint(dir, len, cen) {
+    var ptDir = (dir * Math.PI) / 180.0;
+    var relPt = [len * Math.cos(ptDir), len * Math.sin(ptDir)];
+    return [cen.x + relPt.x, cen.y + relPt.y];
+  }
+
+  /**
+   * _findClosestPtOnCtr - Finding the closest point on the contour in the direction specified by theta
+   *  Input:  theta(angle) (float)
+   * Output:  closest point on the contour (float)
+   */
+
+  _findClosestPtOnCtr(th) {
+    var closest = -1,
+      diff = 1000;
+    this.direction.forEach((th2, i) => {
+      if (Math.abs(th - th2) < diff) {
+        closest = i;
+        diff = Math.abs(th - th2);
+      }
+    });
+    return closest;
+  }
+
+  /**
+   * _findDir - Determining the direction of pt2 from pt1
+   *  Input:  Two points (float)
+   * Output:  theta(angle) (float)
+   */
+
+  _findDir(pt1, pt2) {
+    var th = Math.atan2(pt2.y - pt1.y, pt2.x - pt1.x); // atan = tan ^ -1
+    // ERROR CHECK - what happens if it is 0, 0
+    th = (th * 180) / Math.PI;
+    th = (360 + th) % 360;
+    return th;
+  }
+
+  /**
+   * _circleInCtr - Checks if circle is inside the contour 
+   *  Input:  1. centre of the circle (Delta Nudge tool)
+              2. contour
+              3. centre of the contour
+   * Output:  truth value of the check
+   */
+
+  _circleInCtr(cirCen, ctr, ctrCen = null) {
+    if (ctrCen === null) {
+      // To Compute the mean for (x,y)
+      var xsum = 0,
+        ysum = 0;
+      ctr.forEach((pt) => {
+        xsum += pt.x;
+        ysum += pt.y;
+      });
+      ctrCen = ctr[0];
+      ctrCen.x = xsum / ctr.length;
+      ctrCen.y = ysum / ctr.length;
+
+      var tempDir = [];
+      ctr.forEach((pt) => {
+        tempDir.push(this._findDir(ctrCen, pt));
+      });
+      this.direction = tempDir; // calculate the direction of all the points on the contour
+    }
+
+    if (this.direction.length === 0) {
+      var tempDir = [];
+      ctr.forEach((pt) => {
+        tempDir.push(this._findDir(ctrCen, pt));
+      });
+      this.direction = tempDir; // calculate the direction of all the points on the contour
+    }
+
+    var cirDir = this._findDir(ctrCen, cirCen);
+    console.log(cirDir);
+    var closestPt = ctr[this._findClosestPtOnCtr(cirDir)];
+    if (this._distance(closestPt, ctrCen) >= this._distance(cirCen, ctrCen))
+      return true;
+    return false;
+  }
+
+  /**
+   * _getCirclePts - To obtain points of the circle
+   *  Input:  1. centre of the circle (Delta Nudge tool)
+              2. radius
+              3. first point
+              4. last point
+              5. number of points
+   * Output:  return points on circle
+   */
+
+  _getCirclePts(cen, rad, fPt, lPt, numPts) {
+    var pts = [];
+    var dir1 = this._findDir(cen, fPt),
+      dir2 = this._findDir(cen, lPt);
+    if (Math.abs(dir1 - dir2) > 180) {
+      if (dir1 > dir2) dir2 += 360;
+      else dir2 -= 360;
+    }
+
+    var step = (dir2 - dir1) / (numPts + 1);
+    var th = dir1 + step;
+    while (Math.abs(th - dir2) > Math.abs(step * 1.1)) {
+      var pt = this._getPoint((th + 360) % 360, rad, cen);
+      pts.push(pt);
+      th += step;
+    }
+    var tempPts = [];
+    pts.forEach((pt) => {
+      tempPts.push(pt);
+    });
+    return tempPts;
+  }
+
+  _adjustPt(mctr, cirCen, ctrCen, first, last, opType) {
+    // opType is 1 for dilation and -1 for erosion
+    // It shifts the point in the radial direction by 1 or 2 pixels, depending on distance of the point from circle centre
+    var ctr = this.oldCtr.slice();
+    var idx = ((first + last) / 2.0) % mctr.length;
+
+    var dist = this._distance(ctr[idx], cirCen);
+    console.log('3\n');
+    var delChange = dist > this.INNER_RAD * this.radius ? 1 : 2;
+    delChange *= opType * this.max_edit * this.pixelSize; // length of the point from the circle centre is increased by this amount
+    if (delChange > 2) console.log('adjust contour: ', delChange);
+
+    var maxD = this._distance(ctr[idx], ctrCen) + delChange;
+    console.log('4\n');
+    var midPt = this._getPoint(this.direction[idx], maxD, ctrCen);
+
+    if (last - first < this.ARC_SIZE) {
+      return;
+    }
+    var ret = this._findCircle(
+      this.ctr[first],
+      midPt,
+      this.ctr[last % mctr.length]
+    );
+    var centre = ctr[0];
+    centre.x = ret[0];
+    centre.y = ret[1];
+    var rad = ret[2];
+    var pts = this._getCirclePts(
+      centre,
+      rad,
+      ctr[first],
+      ctr[last % mctr.length],
+      last - first - 1
+    );
+
+    for (let i = first + 1; i < last; i++) {
+      var pt = pts[i];
+      if (opType == DILATE) {
+        if (
+          this._distance(pt, ctrCen) >
+          this._distance(mctr[i % mctr.length], ctrCen)
+        ) {
+          console.log('5\n');
+          mctr[i % mctr.length] = pt;
+        }
+      } else {
+        if (
+          this._distance(pt, ctrCen) <
+          this._distance(mctr[i % mctr.length], ctrCen)
+        ) {
+          console.log('6\n');
+          mctr[i % mctr.length] = pt;
+        }
+      }
+    }
+    return;
+  }
+
+  _updateContour(cirCen, opType) {
+    const { points, mousePoint, toolSize, element } = this._sculptData;
+
+    cirCen = mousePoint;
+    this.opType = opType;
+    this.ctr = points;
+    var xsum = 0,
+      ysum = 0;
+    this.ctr.forEach((pt) => {
+      xsum += pt.x;
+      ysum += pt.y;
+    });
+
+    var ctrCen = this.ctr[0];
+    ctrCen.x = xsum / this.ctr.length;
+    ctrCen.y = ysum / this.ctr.length;
+
+    var inside = this._circleInCtr(cirCen, this.ctr, ctrCen);
+
+    if (
+      !((inside && this.opType == DILATE) || (!inside && this.opType == ERODE))
+    ) {
+      return this.ctr; // the circle should be outside for erosion and inside for dilation
+    }
+
+    var first = -1,
+      last = -1; // the first and last point on the contour that lie inside the circle
+    var dilateD = 10000,
+      erodeD = 0; // min and max distance from "cen", ie  cirCen or ctrCen, depending on opType
+
+    var cen = this.opType == ERODE ? ctrCen : cirCen;
+    var shift = 0;
+    if (this._distance(this.ctr[0], cirCen) < this.radius) {
+      console.log('1\n');
+      shift = this.ctr.length / 2.0; // this is to handle the case when the first ctr pt is inside the arc.
+    } else {
+      shift = 0;
+    }
+
+    /* this is to handle the case when the first ctr pt is inside the arc. In that caase
+        the search will start from i+shift in the coming for loop. This is to make sure that 
+         the first point is outside of the circle arc. 
+    */
+
+    for (let i = 0; i < this.ctr.length; i++) {
+      var d = this._distance(this.ctr[(i + shift) % this.ctr.length], cirCen);
+      console.log('2\n');
+      if (d < this.radius) {
+        if (first == -1) first = i + shift;
+        if (last == -1 || i - last + shift <= 2) last = i + shift;
+      } // if the point is inside the circle
+    }
+
+    if (first >= this.ctr.length) {
+      first = first % this.ctr.length;
+      last = last % this.ctr.length;
+    }
+
+    if (first != -1) {
+      this._adjustPt(this.ctr, cirCen, ctrCen, first, last, this.opType);
+    }
+    return this.ctr;
+  }
+
+  _dense() {
+    var dists = [];
+    var candidates = [];
+    this.ctr.forEach((pt, i) => {
+      var dist = 0;
+      if (i != this.ctr.length - 1)
+        dist = this._distance(this.ctr[i], this.ctr[i + 1]);
+      else dist = this._distance(this.ctr[i], this.ctr[0]);
+      dists.push(dist);
+    });
+
+    var cutoff = 10;
+    var offset = 0;
+
+    dists.forEach((d, i) => {
+      var num = Math.floor(d / cutoff);
+      var points = [];
+      if (num !== 0) {
+        if (i != dists.length - 1) {
+          for (let f = 0; f < num; f++) {
+            var temp =
+              this.ctr[i + offset] +
+              ((f + 1) / (num + 1)) *
+                (this.ctr[i + 1 + offset] - this.ctr[i + offset]);
+            points.push(temp);
+          }
+        } else {
+          for (let f = 0; f < num; f++) {
+            var temp =
+              this.ctr[i + offset] +
+              ((f + 1) / (num + 1)) * (this.ctr[0] - this.ctr[i + offset]);
+            points.push(temp);
+          }
+        }
+        points.map((pt) => [pt[0], pt[1]]);
+        // points = [pt.reshape([-1, 2]) for pt in points];
+
+        // points = np.concatenate(points, axis=0);
+
+        this.ctr.splice(i + 1 + offset, 0, ...points);
+        // s.ctr = np.insert(s.ctr, i + 1 + offset, points, axis=0);
+        offset += points.shape[0];
+      }
+    });
+    var tempEdited = [];
+    for (let i = 0; i < this.ctr.length; i++) {
+      tempEdited.push(0);
+    }
+    this.bPtsEdited = tempEdited; // to indicate if a boundary point has already been modified
+    return [this.ctr, this.bPtsEdited];
   }
 
   /**
@@ -466,7 +869,11 @@ export default class DeltaNudgeTool extends BaseTool {
   _pushHandles() {
     const { points, mousePoint, toolSize, element } = this._sculptData;
     const pushedHandles = {};
-
+    console.log(points[0]);
+    /* 
+      Format of each point in points list
+      FreehandHandleData {x: 965.2375000000001, y: 100.48250000000004, highlight: true, active: true, lines: Array(1)} 
+   */
     for (let i = 0; i < points.length; i++) {
       // converts point on contour from pixel coords to canvas coords
       const pointsCanvas = external.cornerstone.pixelToCanvas(
@@ -491,11 +898,12 @@ export default class DeltaNudgeTool extends BaseTool {
         mousePoint
       );
       // console.log('Outside ', mousePoint);
+      // console.log('Outside', distanceToHandleCanvas);
       // 52 represents the radius of outer circle in canvas units
       if (distanceToHandleCanvas > 52) {
         continue;
       }
-      console.log(distanceToHandleCanvas);
+      // console.log('Found', distanceToHandleCanvas);
       // console.log('Inside ', mousePoint);
       var currScale =
         external.cornerstone.getEnabledElement(element).viewport.scale;
@@ -503,7 +911,7 @@ export default class DeltaNudgeTool extends BaseTool {
       /*
         currScale = Stores the current viewport scale 
         prevScale = Stores the previous viewport scale
-        testElement = Resultant - has corrent value of shift 
+        testElement = Resultant - has corrent value of shift;
       */
 
       if (currScale !== prevScale) {
