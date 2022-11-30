@@ -644,7 +644,7 @@ export default class DeltaNudgeTool extends BaseTool {
     }
 
     var cirDir = this._findDir(ctrCen, cirCen);
-    console.log(cirDir);
+    // console.log(cirDir);
     var closestPt = ctr[this._findClosestPtOnCtr(cirDir)];
     if (this._distance(closestPt, ctrCen) >= this._distance(cirCen, ctrCen))
       return true;
